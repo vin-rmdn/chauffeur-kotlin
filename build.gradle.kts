@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.4.10"
     application
+    id("org.graalvm.buildtools.native") version "1.1.14"
 }
 
 group = "dev.systrshr"
@@ -51,5 +52,13 @@ tasks.test {
 tasks.withType<Test> {
     testLogging {
         showStandardStreams = true
+    }
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            buildArgs.add("-H:ReflectionConfigurationFiles=${layout.projectDirectory}/src/main/resources/META-INF/native-image/dev/systrshr/chauffeur-kotlin/reflect-config.json")
+        }
     }
 }

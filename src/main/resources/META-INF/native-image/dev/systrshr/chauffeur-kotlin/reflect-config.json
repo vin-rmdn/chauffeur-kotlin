@@ -1,0 +1,26 @@
+[
+  {
+    "name": "dev.systrshr.chauffeur_kotlin.command.route.Config",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "methods": [
+      { "name": "<init>", "parameterTypes": ["dev.systrshr.chauffeur_kotlin.command.route.GoogleCloud"] }
+    ]
+  },
+  {
+    "name": "dev.systrshr.chauffeur_kotlin.command.route.GoogleCloud",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "methods": [
+      { "name": "<init>", "parameterTypes": ["java.lang.String"] }
+    ]
+  }
+]
