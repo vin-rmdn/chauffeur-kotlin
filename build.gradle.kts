@@ -11,11 +11,15 @@ repositories {
 
 dependencies {
     implementation("com.google.maps:google-maps-routing:1.83.0")
+    implementation("com.sksamuel.hoplite:hoplite-core:2.9.0")
+    implementation("com.sksamuel.hoplite:hoplite-toml:2.9.0")
+    implementation("com.github.ajalt.clikt:clikt:5.1.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.mockito:mockito-core:5.+")
     testImplementation("org.mockito:mockito-junit-jupiter:5.+")
     testImplementation("net.bytebuddy:byte-buddy-agent:1.14.+")
+    testImplementation("io.mockk:mockk-jvm:1.14.11")
 }
 
 kotlin {
