@@ -8,7 +8,7 @@ import com.google.type.LatLng
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.addResourceSource
 
-class Route(
+class RouteService(
     private val repository: Repository = buildRepository(),
 ) : CliktCommand("route") {
     val origin: String by argument()

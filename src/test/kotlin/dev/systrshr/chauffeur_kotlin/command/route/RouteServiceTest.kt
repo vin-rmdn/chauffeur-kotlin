@@ -12,9 +12,9 @@ import kotlin.test.assertEquals
 
 // TODO: move away remaining Mockito mocks to MockK
 
-class RouteTest {
+class RouteServiceTest {
     val mockRepository = mockk<Repository>()
-    val classInTest = Route(repository = mockRepository)
+    val classInTest = RouteService(repository = mockRepository)
 
     @Test
     fun `with improper origin coordinate format, throw an exception`() {
