@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.4.10"
+    application
 }
 
 group = "dev.systrshr"
@@ -24,6 +25,10 @@ dependencies {
 
 kotlin {
     jvmToolchain(25)
+}
+
+application {
+    mainClass.set("dev.systrshr.chauffeur_kotlin.ApplicationKt")
 }
 
 abstract class MockitoAgentProvider : CommandLineArgumentProvider {
