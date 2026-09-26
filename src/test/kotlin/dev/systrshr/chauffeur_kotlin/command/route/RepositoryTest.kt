@@ -1,4 +1,4 @@
-package dev.systrshr.chauffeur_kotlin
+package dev.systrshr.chauffeur_kotlin.command.route
 
 import com.google.maps.routing.v2.ComputeRoutesResponse
 import com.google.maps.routing.v2.RoutesClient
@@ -7,11 +7,12 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
 import org.mockito.Mockito.mock
+import kotlin.test.assertNotNull
 
-class RouteTest {
-    val mockRouteClient = mock(RoutesClient::class.java)
+class RepositoryTest {
+    val mockRouteClient: RoutesClient = mock(RoutesClient::class.java)
 
-    var classInTest: Route = Route(mockRouteClient)
+    var classInTest: Repository = Repository(mockRouteClient)
 
     @Test
     fun `route should run successfully`() {
@@ -27,5 +28,6 @@ class RouteTest {
         Mockito.`when`(mockRouteClient.computeRoutes(any())).thenReturn(ComputeRoutesResponse.newBuilder().build())
 
         val directions = classInTest.directions(origin, destination)
+        assertNotNull(directions)
     }
 }
