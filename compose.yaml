@@ -1,0 +1,17 @@
+services:
+  database:
+    image: postgres:18-alpine
+    restart: on-failure:5
+    shm_size: 128mb
+    secrets:
+      - db-password
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+      POSTGRES_USER: chauffeur
+      POSTGRES_DB: chauffeur
+    ports:
+      - $DATABASE_PORT:5432
+
+secrets:
+  db-password:
+    environment: "DATABASE_PASSWORD"
