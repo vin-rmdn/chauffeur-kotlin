@@ -9,13 +9,13 @@ import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.addResourceSource
 
 class RouteService(
-    private val repository: Repository = buildRepository(),
+    private val routeClient: RouteClient = buildRepository(),
 ) : CliktCommand("route") {
     val origin: String by argument()
     val destination: String by argument()
 
     override fun run() {
-        val response = repository.directions(latLngFromString(origin), latLngFromString(destination))
+        val response = routeClient.directions(latLngFromString(origin), latLngFromString(destination))
         println("Response: ${response.toString()}")
     }
 
@@ -41,10 +41,10 @@ class RouteService(
     }
 }
 
-private fun buildRepository(): Repository {
+private fun buildRepository(): RouteClient {
     val conf = ConfigLoaderBuilder.default().addResourceSource("/config.toml").build().loadConfigOrThrow<Config>()
     val settings = RoutesSettings.newBuilder().setApiKey(conf.googleCloud.mapsApiKey).setHeaderProvider {
         mapOf<String, String>("X-Goog-FieldMask" to "*")
     }.build()
-    return Repository(RoutesClient.create(settings))
+    return RouteClient(RoutesClient.create(settings))
 }

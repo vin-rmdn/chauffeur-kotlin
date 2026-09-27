@@ -13,8 +13,8 @@ import kotlin.test.assertEquals
 // TODO: move away remaining Mockito mocks to MockK
 
 class RouteServiceTest {
-    val mockRepository = mockk<Repository>()
-    val classInTest = RouteService(repository = mockRepository)
+    val mockRouteClient = mockk<RouteClient>()
+    val classInTest = RouteService(routeClient = mockRouteClient)
 
     @Test
     fun `with improper origin coordinate format, throw an exception`() {
@@ -22,7 +22,7 @@ class RouteServiceTest {
 
         assertEquals("-6.0-106.0 is not a valid coordinate (1 axes)", exception.message)
 
-        confirmVerified(mockRepository)
+        confirmVerified(mockRouteClient)
     }
 
     @Test
@@ -31,17 +31,17 @@ class RouteServiceTest {
 
         assertEquals("-6.0,hi is not a double floating value: For input string: \"hi\"" ,exception.message)
 
-        confirmVerified(mockRepository)
+        confirmVerified(mockRouteClient)
     }
 
 
     @Test
     fun `route command should work properly`() {
-        every { mockRepository.directions(any(), any()) } returns ComputeRoutesResponse.newBuilder().build()
+        every { mockRouteClient.directions(any(), any()) } returns ComputeRoutesResponse.newBuilder().build()
         val result = classInTest.test("-- -6.0,106.0 -6.1,106.1")
 
         assertEquals(0, result.statusCode)
-        verify { mockRepository.directions(any(), any()) }
-        confirmVerified(mockRepository)
+        verify { mockRouteClient.directions(any(), any()) }
+        confirmVerified(mockRouteClient)
     }
 }

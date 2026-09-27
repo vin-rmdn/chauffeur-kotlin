@@ -9,7 +9,7 @@ import com.google.maps.routing.v2.RoutingPreference
 import com.google.maps.routing.v2.Waypoint
 import com.google.type.LatLng
 
-class Repository(var client: RoutesClient) {
+class RouteClient(var client: RoutesClient) {
     fun directions(origin: LatLng, destination: LatLng): ComputeRoutesResponse {
         val request =
             ComputeRoutesRequest.newBuilder().setOrigin(origin.toWaypoint()).setDestination(destination.toWaypoint())
