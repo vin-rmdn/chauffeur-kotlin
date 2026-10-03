@@ -16,6 +16,8 @@ dependencies {
     implementation("com.sksamuel.hoplite:hoplite-core:2.9.0")
     implementation("com.sksamuel.hoplite:hoplite-toml:2.9.0")
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
+    implementation("org.jetbrains.exposed:exposed-core:1.5.0")
+    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:1.5.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.mockito:mockito-core:5.+")
