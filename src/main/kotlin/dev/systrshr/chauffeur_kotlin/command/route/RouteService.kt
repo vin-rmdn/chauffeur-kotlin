@@ -5,19 +5,21 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.google.maps.routing.v2.RoutesClient
 import com.google.maps.routing.v2.RoutesSettings
 import com.google.type.LatLng
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.addResourceSource
 import dev.systrshr.chauffeur_kotlin.Config
+import kotlin.time.Clock
 
 class RouteService(
-    private val routeClient: RouteClient = buildRepository(),
+    private val routeClient: RouteClient = buildClient(),
+    private val repository: Repository = buildRepository(),
 ) : CliktCommand("route") {
     val origin: String by argument()
     val destination: String by argument()
 
     override fun run() {
         val response = routeClient.directions(latLngFromString(origin), latLngFromString(destination))
-        println("Response: ${response.toString()}")
+
+        val routes = response.toRoutes(Clock.System.now())
+        for (route in routes) repository.insert(route)
     }
 
     private fun latLngFromString(input: String): LatLng {
@@ -40,12 +42,18 @@ class RouteService(
 
         return latLng
     }
-}
 
-private fun buildRepository(): RouteClient {
-    val conf = ConfigLoaderBuilder.default().addResourceSource("/config.toml").build().loadConfigOrThrow<Config>()
-    val settings = RoutesSettings.newBuilder().setApiKey(conf.googleCloud.mapsApiKey).setHeaderProvider {
-        mapOf<String, String>("X-Goog-FieldMask" to "*")
-    }.build()
-    return RouteClient(RoutesClient.create(settings))
+    companion object {
+        private fun buildClient(): RouteClient {
+            val config = Config.build()
+            val settings = RoutesSettings.newBuilder().setApiKey(config.googleCloud.mapsApiKey).setHeaderProvider {
+                mapOf<String, String>("X-Goog-FieldMask" to "*")
+            }.build()
+            return RouteClient(RoutesClient.create(settings))
+        }
+
+        private fun buildRepository(): Repository {
+            return Repository()
+        }
+    }
 }
