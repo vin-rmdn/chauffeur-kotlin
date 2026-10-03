@@ -22,11 +22,6 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql:13.7.0")
     implementation("org.postgresql:postgresql:42.7.12")
     implementation("org.jetbrains.exposed:exposed-jdbc:1.5.0")
-//    implementation("org.jetbrains.exposed:exposed-migration-core:1.5.0")
-//    implementation("org.jetbrains.exposed:exposed-migration-jdbc:1.5.0")
-//    implementation("org.jetbrains.exposed:exposed-migration-r2dbc:1.5.0")
-//    implementation("org.postgresql:r2dbc-postgresql:1.1.3.RELEASE")
-//    implementation("org.jetbrains.exposed:exposed-json:1.5.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.mockito:mockito-core:5.+")
