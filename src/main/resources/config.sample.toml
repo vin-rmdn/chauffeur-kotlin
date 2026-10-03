@@ -8,3 +8,10 @@ name = "chauffeur"
 host = "localhost"
 port = 1201
 directory = "src/main/resources/db/migration"
+
+[database]
+user = "chauffeur"
+password = "dummy"
+name = "chauffeur"
+host = "localhost"
+port = 1201
