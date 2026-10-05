@@ -1,8 +1,6 @@
 package dev.systrshr.chauffeur_kotlin.db
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.addResourceSource
 import dev.systrshr.chauffeur_kotlin.Config
 import org.flywaydb.core.Flyway
 
@@ -11,8 +9,7 @@ class Migration(
 ) : CliktCommand("migration") {
     companion object {
         private fun loadConfig(): MigrationConfig {
-            return ConfigLoaderBuilder.default().addResourceSource("/config.toml").build()
-                .loadConfigOrThrow<Config>().migration
+            return Config.build().migration
         }
 
         private fun loadFlyway(config: MigrationConfig): Flyway {

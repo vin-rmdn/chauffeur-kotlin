@@ -55,6 +55,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.processResources {
+    exclude("config*.toml", ".env*")
+}
+
 tasks.withType<Test> {
     testLogging {
         showStandardStreams = true
@@ -62,9 +66,13 @@ tasks.withType<Test> {
 }
 
 graalvmNative {
+    agent {
+        defaultMode = "standard"
+    }
+
     binaries {
         named("main") {
-            buildArgs.add("-H:ReflectionConfigurationFiles=${layout.projectDirectory}/src/main/resources/META-INF/native-image/dev/systrshr/chauffeur-kotlin/reflect-config.json")
+            imageName.set("Chauffeur Kotlin")
         }
     }
 }
