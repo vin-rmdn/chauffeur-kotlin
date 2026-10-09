@@ -7,7 +7,11 @@ data class MigrationConfig(
     val host: String,
     val port: Int,
     val directory: String
-)
+) {
+    fun jdbcUrl(): String {
+        return "jdbc:postgresql://$host:$port/$name"
+    }
+}
 
 data class Config(
     val user: String,

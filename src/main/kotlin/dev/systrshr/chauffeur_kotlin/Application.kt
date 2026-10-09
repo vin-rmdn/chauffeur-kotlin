@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.core.subcommands
 import dev.systrshr.chauffeur_kotlin.command.route.Command
 import dev.systrshr.chauffeur_kotlin.command.route.RouteService
 import dev.systrshr.chauffeur_kotlin.db.Migration
+import org.flywaydb.core.Flyway
 
 class Application : CliktCommand("chauffeur-kotlin") {
     override fun run() = Unit
@@ -14,5 +15,14 @@ class Application : CliktCommand("chauffeur-kotlin") {
 fun main(args: Array<String>) {
     val routeCommand = Command { return@Command RouteService() }
 
-    Application().subcommands(routeCommand, Migration()).main(args)
+    val config = Config.build()
+
+    val flywayMigrator =
+        Flyway.configure().dataSource(config.migration.jdbcUrl(), config.migration.user, config.migration.password)
+            .locations("filesystem:${config.migration.directory}").baselineOnMigrate(true).load()
+    val migrationCommand = Migration {
+        return@Migration flywayMigrator
+    }
+
+    Application().subcommands(routeCommand, migrationCommand).main(args)
 }
