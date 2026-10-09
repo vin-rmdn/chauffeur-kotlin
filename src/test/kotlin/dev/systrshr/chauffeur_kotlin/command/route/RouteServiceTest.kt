@@ -1,6 +1,5 @@
 package dev.systrshr.chauffeur_kotlin.command.route
 
-import com.github.ajalt.clikt.testing.test
 import com.google.maps.routing.v2.ComputeRoutesResponse
 import com.google.maps.routing.v2.Location
 import com.google.maps.routing.v2.Route
@@ -25,7 +24,7 @@ class RouteServiceTest {
 
     @Test
     fun `with improper origin coordinate format, throw an exception`() {
-        val exception = assertThrows<IllegalArgumentException> { classInTest.test("-- -6.0-106.0 hi_there") }
+        val exception = assertThrows<IllegalArgumentException> { classInTest.run("-6.0-106.0", "hi_there") }
 
         assertEquals("-6.0-106.0 is not a valid coordinate (1 axes)", exception.message)
 
@@ -34,7 +33,7 @@ class RouteServiceTest {
 
     @Test
     fun `with not a number value, throw an exception`() {
-        val exception = assertThrows<IllegalArgumentException> { classInTest.test("-- -6.0,hi hi-there") }
+        val exception = assertThrows<IllegalArgumentException> { classInTest.run("-6.0,hi", "hi-there") }
 
         assertEquals("-6.0,hi is not a double floating value: For input string: \"hi\"", exception.message)
 
@@ -49,7 +48,7 @@ class RouteServiceTest {
 
         every { mockRouteClient.directions(any(), any()) } returns stubResponse
 
-        val actualException = assertThrows<Exception> { classInTest.test("-- -6.0,106.0 -6.1,106.1") }
+        val actualException = assertThrows<Exception> { classInTest.run("-6.0,106.0", "-6.1,106.1") }
         assertEquals("empty legs", actualException.message)
 
         verify { mockRouteClient.directions(any(), any()) }
@@ -78,9 +77,8 @@ class RouteServiceTest {
 
         every { mockRouteClient.directions(any(), any()) } returns stubResponse
         every { mockRepository.insert(any()) } returns Unit
-        val result = classInTest.test("-- -6.0,106.0 -6.1,106.1")
+        val result = classInTest.run("-6.0,106.0", "-6.1,106.1")
 
-        assertEquals(0, result.statusCode)
         verify { mockRouteClient.directions(any(), any()) }
         verify { mockRepository.insert(any()) }
         confirmVerified(mockRouteClient)

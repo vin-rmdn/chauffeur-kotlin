@@ -1,7 +1,5 @@
 package dev.systrshr.chauffeur_kotlin.command.route
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.arguments.argument
 import com.google.maps.routing.v2.RoutesClient
 import com.google.maps.routing.v2.RoutesSettings
 import com.google.type.LatLng
@@ -9,13 +7,10 @@ import dev.systrshr.chauffeur_kotlin.Config
 import kotlin.time.Clock
 
 class RouteService(
-    private val routeClient: RouteClient = buildClient(),
-    private val repository: Repository = buildRepository(),
-) : CliktCommand("route") {
-    val origin: String by argument()
-    val destination: String by argument()
-
-    override fun run() {
+    private var routeClient: RouteClient = buildClient(),
+    private var repository: Repository = buildRepository()
+) {
+    fun run(origin: String, destination: String) {
         val response = routeClient.directions(latLngFromString(origin), latLngFromString(destination))
 
         val routes = response.toRoutes(Clock.System.now())
@@ -47,7 +42,7 @@ class RouteService(
         private fun buildClient(): RouteClient {
             val config = Config.build()
             val settings = RoutesSettings.newBuilder().setApiKey(config.googleCloud.mapsApiKey).setHeaderProvider {
-                mapOf<String, String>("X-Goog-FieldMask" to "*")
+                mapOf("X-Goog-FieldMask" to "*")
             }.build()
             return RouteClient(RoutesClient.create(settings))
         }
