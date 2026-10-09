@@ -6,7 +6,7 @@ import org.flywaydb.core.Flyway
 class Migration(
     val flywayFactory: () -> Flyway
 ) : CliktCommand("migration") {
-    override fun run(): Unit {
+    override fun run() {
         val flyway = flywayFactory()
         val result = flyway.migrate()
         print(result)

@@ -77,7 +77,7 @@ class RouteServiceTest {
 
         every { mockRouteClient.directions(any(), any()) } returns stubResponse
         every { mockRepository.insert(any()) } returns Unit
-        val result = classInTest.run("-6.0,106.0", "-6.1,106.1")
+        classInTest.run("-6.0,106.0", "-6.1,106.1")
 
         verify { mockRouteClient.directions(any(), any()) }
         verify { mockRepository.insert(any()) }
