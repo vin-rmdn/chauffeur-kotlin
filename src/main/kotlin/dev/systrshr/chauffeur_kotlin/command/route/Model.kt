@@ -4,6 +4,7 @@ import com.google.maps.routing.v2.ComputeRoutesResponse
 import com.google.type.LatLng
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 data class Coordinate(val latitude: Double, val longitude: Double)
@@ -30,13 +31,16 @@ fun ComputeRoutesResponse.toRoutes(estimateTime: Instant): List<Route> {
 
         if (legs.isEmpty()) throw Exception("empty legs")
 
+        val duration = googleRoute.duration.seconds.seconds + googleRoute.duration.nanos.nanoseconds
+        val staticDuration = googleRoute.staticDuration.seconds.seconds + googleRoute.staticDuration.nanos.nanoseconds
+
         routes.add(
             Route(
                 legs[0].startLocation.latLng.toCoordinate(),
                 legs[legCount - 1].endLocation.latLng.toCoordinate(),
                 estimateTime,
-                googleRoute.duration.nanos.nanoseconds,
-                googleRoute.staticDuration.nanos.nanoseconds,
+                duration,
+                staticDuration,
                 googleRoute.distanceMeters,
             )
         )
