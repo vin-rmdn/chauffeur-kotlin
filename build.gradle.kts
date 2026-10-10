@@ -11,7 +11,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.google.maps:google-maps-routing:1.83.0")
+    implementation("com.google.maps:google-maps-routing:1.84.0")
     implementation("com.sksamuel.hoplite:hoplite-core:2.9.0")
     implementation("com.sksamuel.hoplite:hoplite-toml:2.9.0")
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
