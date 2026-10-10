@@ -12,8 +12,8 @@ repositories {
 
 dependencies {
     implementation("com.google.maps:google-maps-routing:1.84.0")
-    implementation("com.sksamuel.hoplite:hoplite-core:2.9.0")
-    implementation("com.sksamuel.hoplite:hoplite-toml:2.9.0")
+    implementation("com.sksamuel.hoplite:hoplite-core:3.0.0")
+    implementation("com.sksamuel.hoplite:hoplite-toml:3.0.0")
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
     implementation("org.jetbrains.exposed:exposed-core:1.5.0")
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:1.5.0")
