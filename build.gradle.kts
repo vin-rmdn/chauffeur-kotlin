@@ -42,6 +42,9 @@ application {
         "-XX:TieredStopAtLevel=1",
         "-Xshare:auto",
         "-Xmx192m",
+        // JDK 24+ warn on every run about JNA (Flyway) and protobuf's Unsafe use; keep the journal clean.
+        "--enable-native-access=ALL-UNNAMED",
+        "--sun-misc-unsafe-memory-access=allow",
     )
 }
 
