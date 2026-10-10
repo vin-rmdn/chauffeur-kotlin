@@ -40,7 +40,7 @@ jobs:
 
       - name: shellcheck
         run: |
-          mapfile -t scripts < <(git ls-files '*.sh')
+          mapfile -t scripts < <(git ls-files '*.sh' 'deploy/test/fake-bin/*')
           [ "${#scripts[@]}" -eq 0 ] || docker run --rm -v "$PWD:/repo" -w /repo koalaman/shellcheck@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d "${scripts[@]}"
 
       - name: gitleaks (full history)
@@ -103,9 +103,35 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  deploy-scripts:
+    name: Deploy tooling tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: deploy.sh unit tests (bats, fake docker)
+        run: docker run --rm -v "$PWD:/repo" -w /repo bats/bats@sha256:5322b877351fda0cc435de8c6116de7d0a2ec79d7c680132a0ef329a633bc66f deploy/test
+
+      - name: bootstrap.sh in a clean container
+        run: deploy/test/bootstrap-test.sh
+
+      - name: SSH key restrictions against a real sshd
+        run: deploy/test/ssh-restrictions.sh
+
+      - name: Production compose file and timer schedule are valid
+        run: |
+          secret="$(mktemp)"
+          CHAUFFEUR_DB_PASSWORD_FILE="$secret" docker compose -f deploy/compose.prod.yaml config -q
+          rm -f "$secret"
+          calendar="$(sed -n 's/^OnCalendar=//p' deploy/systemd/chauffeur-kotlin-route.timer)"
+          systemd-analyze calendar "$calendar"
+
   image:
     name: Build and test image
-    needs: [lint, unit, integration, build]
+    needs: [lint, unit, integration, build, deploy-scripts]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

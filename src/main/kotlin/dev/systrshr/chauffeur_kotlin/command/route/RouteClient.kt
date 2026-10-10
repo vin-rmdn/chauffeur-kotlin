@@ -9,7 +9,11 @@ import com.google.maps.routing.v2.RoutingPreference
 import com.google.maps.routing.v2.Waypoint
 import com.google.type.LatLng
 
+<<<<<<<< Updated upstream:src/main/kotlin/dev/systrshr/chauffeur_kotlin/command/route/RouteClient.kt
 class RouteClient(var client: RoutesClient) {
+========
+class Repository(var client: RoutesClient) {
+>>>>>>>> Stashed changes:src/main/kotlin/dev/systrshr/chauffeur_kotlin/command/route/Repository.kt
     fun directions(origin: LatLng, destination: LatLng): ComputeRoutesResponse {
         val request =
             ComputeRoutesRequest.newBuilder().setOrigin(origin.toWaypoint()).setDestination(destination.toWaypoint())

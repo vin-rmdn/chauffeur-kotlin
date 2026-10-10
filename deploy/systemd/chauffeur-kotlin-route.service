@@ -1,0 +1,19 @@
+[Unit]
+Description=chauffeur-kotlin: record the current traffic-aware route estimate
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+# Skipped silently (not failed) until the first successful deploy has created this file.
+ConditionPathExists=/var/lib/chauffeur-kotlin/current
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/chauffeur-kotlin/route.env
+TimeoutStartSec=120
+# A oneshot unit cannot overlap itself; this just clears a container left behind by a crash.
+ExecStartPre=-/usr/bin/docker rm -f chauffeur-kotlin-route
+# `--` lets coordinates that start with "-" (southern hemisphere) through as arguments.
+ExecStart=/usr/bin/docker run --rm --pull=never --name chauffeur-kotlin-route \
+    --network chauffeur-kotlin --memory=384m \
+    --env-file /etc/chauffeur-kotlin/app.env \
+    chauffeur-kotlin:current route -- ${ROUTE_ORIGIN} ${ROUTE_DESTINATION}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Run chauffeur-kotlin route sampling on a schedule
+
+[Timer]
+# Every 15 minutes. Edit with `systemctl edit chauffeur-kotlin-route.timer` (see deploy/README.md).
+OnCalendar=*:0/15
+RandomizedDelaySec=30
+# Each row is a sample of traffic *now*; a catch-up run after downtime would record the wrong moment.
+Persistent=false
+Unit=chauffeur-kotlin-route.service
+
+[Install]
+WantedBy=timers.target
