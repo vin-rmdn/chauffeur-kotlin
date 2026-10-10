@@ -14,12 +14,13 @@ class Application : CliktCommand("chauffeur-kotlin") {
 
 fun main(args: Array<String>) {
     val routeCommand = Command { return@Command RouteService() }
-
-    val config = Config.build()
-
     val migrationCommand = Migration {
-        return@Migration Flyway.configure().dataSource(config.migration?.jdbcUrl(), config.migration?.user, config.migration?.password)
-            .locations("filesystem:${config.migration?.directory}").baselineOnMigrate(true).load()
+        val config = Config.build()
+
+        require(config != null) { return@require "configuration can not be null" }
+
+        return@Migration Flyway.configure().dataSource(config.migration.jdbcUrl(), config.migration.user, config.migration.password)
+            .locations("filesystem:${config.migration.directory}").baselineOnMigrate(true).load()
     }
 
     Application().subcommands(routeCommand, migrationCommand).main(args)

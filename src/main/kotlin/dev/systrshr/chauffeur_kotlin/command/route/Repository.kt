@@ -44,12 +44,15 @@ class Repository(val db: Database = buildDatabase()) {
 
     companion object {
         private fun buildDatabase(): Database {
-            val config = Config.build().database
+            val c = Config.build()
+            require(c != null) { "configuration can not be null" }
+
+            val config = c.database
             val db = Database.connect(
-                config?.jdbcUrl() ?: "",
+                config.jdbcUrl(),
                 driver = "org.postgresql.Driver",
-                user = config?.user ?: "",
-                password = config?.password ?: ""
+                user = config.user,
+                password = config.password
             )
 
             return db
