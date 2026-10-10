@@ -10,16 +10,15 @@ LABEL org.opencontainers.image.title="chauffeur-kotlin" \
 # Unprivileged user; the image holds no configuration or secrets (see .dockerignore).
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin chauffeur
 
-# Permissions are set explicitly (read-only for the runtime user, scripts executable): build output
-# inherits whatever umask the build machine had, which is not reliable.
-COPY --chmod=u=rwX,go=rX build/install/chauffeur-kotlin/ /opt/chauffeur-kotlin/
-COPY --chmod=u=rwX,go=rX src/main/resources/db/migration /opt/chauffeur-kotlin/migration
-# `X` above keeps an execute bit only if the source had one, which CI artifact transfers can lose.
-# Do not depend on that: make the launcher executable explicitly.
-RUN chmod 0755 /opt/chauffeur-kotlin/bin/chauffeur-kotlin
+# Permissions are set with plain numeric chmod instead of relying on how a given BuildKit version interprets
+# symbolic `COPY --chmod` modes: that varies, and build output inherits whatever umask the build machine had.
+# Numeric --chmod applies to files AND directories, so files get 0644 here and directories are fixed right after
+# (a metadata-only change, so it does not duplicate file contents in a new layer).
+COPY --chmod=0644 build/install/chauffeur-kotlin/ /opt/chauffeur-kotlin/
+COPY --chmod=0644 src/main/resources/db/migration /opt/chauffeur-kotlin/migration
+RUN find /opt/chauffeur-kotlin -type d -exec chmod 0755 {} + \
+ && chmod 0755 /opt/chauffeur-kotlin/bin/chauffeur-kotlin
 
-# Non-secret default. Everything else (DATABASE__*, MIGRATION__*, GOOGLE_CLOUD__*) is supplied at run time
-# with `docker run --env-file`.
 ENV MIGRATION__DIRECTORY=/opt/chauffeur-kotlin/migration
 
 USER 10001

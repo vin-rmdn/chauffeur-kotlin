@@ -57,14 +57,13 @@ expect_failure_matching() { # name pattern
 uid="$(docker run --rm --entrypoint id "${IMAGE}" -u)"
 if [ "${uid}" != "0" ]; then pass "runs as non-root (uid ${uid})"; else fail "runs as root"; fi
 
-# Launcher and its directories must be readable and executable by the runtime user, not just executable:
-# a script that is x-only fails with "sh: cannot open ... Permission denied". Print the modes so CI logs show why.
-modes="$(docker run --rm --entrypoint sh "${IMAGE}" -c 'stat -c "%a %U:%G %n" /opt/chauffeur-kotlin /opt/chauffeur-kotlin/bin /opt/chauffeur-kotlin/bin/chauffeur-kotlin /opt/chauffeur-kotlin/lib')"
-launcher_mode="$(docker run --rm --entrypoint stat "${IMAGE}" -c '%a' /opt/chauffeur-kotlin/bin/chauffeur-kotlin)"
-if [ "${launcher_mode}" = "755" ] && docker run --rm --entrypoint test "${IMAGE}" -r /opt/chauffeur-kotlin/bin/chauffeur-kotlin -a -x /opt/chauffeur-kotlin/bin/chauffeur-kotlin; then
-  pass "launcher is readable and executable by the runtime user (${launcher_mode})"
+# The runtime user must be able to traverse the directories and read + execute the launcher. Inspect as root so the
+# modes can always be reported; check access as the image's own user (uid 10001).
+modes="$(docker run --rm --user 0 --entrypoint sh "${IMAGE}" -c 'stat -c "%a %U:%G %n" /opt /opt/chauffeur-kotlin /opt/chauffeur-kotlin/bin /opt/chauffeur-kotlin/bin/chauffeur-kotlin /opt/chauffeur-kotlin/lib /opt/chauffeur-kotlin/migration' 2>&1 || true)"
+if docker run --rm --entrypoint sh "${IMAGE}" -c 'test -x /opt/chauffeur-kotlin/bin/chauffeur-kotlin && test -r /opt/chauffeur-kotlin/bin/chauffeur-kotlin && test -r /opt/chauffeur-kotlin/lib && test -r /opt/chauffeur-kotlin/migration' >/dev/null 2>&1; then
+  pass "launcher, lib and migrations are accessible to the runtime user"
 else
-  fail "launcher permissions are wrong (want 755, got ${launcher_mode})" "${modes}"
+  fail "runtime user cannot access the launcher/lib/migrations" "${modes}"
 fi
 
 leaked="$(docker run --rm --entrypoint sh "${IMAGE}" -c \
