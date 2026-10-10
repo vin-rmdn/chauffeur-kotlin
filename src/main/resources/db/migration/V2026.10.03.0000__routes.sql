@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS routes (
     origin_longitude DOUBLE PRECISION NOT NULL,
     destination_latitude DOUBLE PRECISION NOT NULL,
     destination_longitude DOUBLE PRECISION NOT NULL,
-    estimate_time TIMESTAMP NOT NULL,
+    estimate_time TIMESTAMPTZ NOT NULL,
     duration BIGINT NOT NULL,
     static_duration BIGINT NOT NULL,
     distance INT NOT NULL,
