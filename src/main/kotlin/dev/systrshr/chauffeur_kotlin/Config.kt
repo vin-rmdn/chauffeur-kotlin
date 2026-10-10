@@ -12,7 +12,7 @@ data class Config(
     val database: dev.systrshr.chauffeur_kotlin.db.Config
 ) {
     companion object {
-        private val isNativeImage = System.getProperty("org.graalvm.nativeimage.imagecode").equals("runtime")
+        private val isNativeImage = System.getProperty("org.graalvm.nativeimage.imagecode")?.equals("runtime") ?: false
 
         // TODO: turn this into a singleton
         fun build(): Config {
