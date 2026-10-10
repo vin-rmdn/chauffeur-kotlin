@@ -12,13 +12,11 @@ data class Config(
     val database: dev.systrshr.chauffeur_kotlin.db.Config
 ) {
     companion object {
-        private val isNativeImage = System.getProperty("org.graalvm.nativeimage.imagecode")?.equals("runtime") ?: false
-
         // TODO: turn this into a singleton
         fun build(): Config? {
             return ConfigLoaderBuilder.default()
                 .addEnvironmentSource()
-                .apply { if (!isNativeImage) addFileSource("config.toml", optional = true) }
+                .apply { addFileSource("config.toml", optional = true) }
                 .build()
                 .loadConfig<Config>().fold(
                     ifInvalid = { return@fold null },

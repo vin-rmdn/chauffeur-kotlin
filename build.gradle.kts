@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm") version "2.4.10"
     application
-    id("org.graalvm.buildtools.native") version "1.1.14"
 }
 
 group = "dev.systrshr"
@@ -62,17 +61,5 @@ tasks.processResources {
 tasks.withType<Test> {
     testLogging {
         showStandardStreams = true
-    }
-}
-
-graalvmNative {
-    agent {
-        defaultMode = "standard"
-    }
-
-    binaries {
-        named("main") {
-            imageName.set("Chauffeur Kotlin")
-        }
     }
 }
