@@ -15,9 +15,7 @@ class Application : CliktCommand("chauffeur-kotlin") {
 fun main(args: Array<String>) {
     val routeCommand = Command { return@Command RouteService() }
     val migrationCommand = Migration {
-        val config = Config.build()
-
-        require(config != null) { return@require "configuration can not be null" }
+        val config = ConfigBuilder.build()
 
         return@Migration Flyway.configure().dataSource(config.migration.jdbcUrl(), config.migration.user, config.migration.password)
             .locations("filesystem:${config.migration.directory}").baselineOnMigrate(true).load()

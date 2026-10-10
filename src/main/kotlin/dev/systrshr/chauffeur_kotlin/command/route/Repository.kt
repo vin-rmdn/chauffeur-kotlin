@@ -1,6 +1,6 @@
 package dev.systrshr.chauffeur_kotlin.command.route
 
-import dev.systrshr.chauffeur_kotlin.Config
+import dev.systrshr.chauffeur_kotlin.ConfigBuilder
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.datetime.duration
 import org.jetbrains.exposed.v1.datetime.timestamp
@@ -44,8 +44,7 @@ class Repository(val db: Database = buildDatabase()) {
 
     companion object {
         private fun buildDatabase(): Database {
-            val c = Config.build()
-            require(c != null) { "configuration can not be null" }
+            val c = ConfigBuilder.build()
 
             val config = c.database
             val db = Database.connect(

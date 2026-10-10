@@ -3,7 +3,7 @@ package dev.systrshr.chauffeur_kotlin.command.route
 import com.google.maps.routing.v2.RoutesClient
 import com.google.maps.routing.v2.RoutesSettings
 import com.google.type.LatLng
-import dev.systrshr.chauffeur_kotlin.Config
+import dev.systrshr.chauffeur_kotlin.ConfigBuilder
 import kotlin.time.Clock
 
 class RouteService(
@@ -40,8 +40,7 @@ class RouteService(
 
     companion object {
         private fun buildClient(): RouteClient {
-            val config = Config.build()
-            require(config != null) { "Config cannot be null" }
+            val config = ConfigBuilder.build()
 
             val settings = RoutesSettings.newBuilder().setApiKey(config.googleCloud.mapsApiKey).setHeaderProvider {
                 mapOf("X-Goog-FieldMask" to "routes.distanceMeters,routes.legs.startLocation,routes.legs.endLocation,routes.duration,routes.staticDuration")
