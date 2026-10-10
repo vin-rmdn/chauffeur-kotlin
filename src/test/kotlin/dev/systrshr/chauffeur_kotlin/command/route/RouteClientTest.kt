@@ -9,17 +9,10 @@ import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import kotlin.test.assertNotNull
 
-<<<<<<<< Updated upstream:src/test/kotlin/dev/systrshr/chauffeur_kotlin/command/route/RouteClientTest.kt
 class RouteClientTest {
     val mockRouteClient: RoutesClient = mock(RoutesClient::class.java)
 
     var classInTest: RouteClient = RouteClient(mockRouteClient)
-========
-class RepositoryTest {
-    val mockRouteClient = mock(RoutesClient::class.java)
-
-    var classInTest: Repository = Repository(mockRouteClient)
->>>>>>>> Stashed changes:src/test/kotlin/dev/systrshr/chauffeur_kotlin/command/route/RepositoryTest.kt
 
     @Test
     fun `route should run successfully`() {
