@@ -17,8 +17,8 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
     implementation("org.jetbrains.exposed:exposed-core:1.5.0")
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:1.5.0")
-    implementation("org.flywaydb:flyway-core:13.7.0")
-    implementation("org.flywaydb:flyway-database-postgresql:13.7.0")
+    implementation("org.flywaydb:flyway-core:13.9.0")
+    implementation("org.flywaydb:flyway-database-postgresql:13.9.0")
     implementation("org.postgresql:postgresql:42.7.12")
     implementation("org.jetbrains.exposed:exposed-jdbc:1.5.0")
 
