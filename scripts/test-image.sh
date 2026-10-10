@@ -57,6 +57,16 @@ expect_failure_matching() { # name pattern
 uid="$(docker run --rm --entrypoint id "${IMAGE}" -u)"
 if [ "${uid}" != "0" ]; then pass "runs as non-root (uid ${uid})"; else fail "runs as root"; fi
 
+# Launcher and its directories must be readable and executable by the runtime user, not just executable:
+# a script that is x-only fails with "sh: cannot open ... Permission denied". Print the modes so CI logs show why.
+modes="$(docker run --rm --entrypoint sh "${IMAGE}" -c 'stat -c "%a %U:%G %n" /opt/chauffeur-kotlin /opt/chauffeur-kotlin/bin /opt/chauffeur-kotlin/bin/chauffeur-kotlin /opt/chauffeur-kotlin/lib')"
+launcher_mode="$(docker run --rm --entrypoint stat "${IMAGE}" -c '%a' /opt/chauffeur-kotlin/bin/chauffeur-kotlin)"
+if [ "${launcher_mode}" = "755" ] && docker run --rm --entrypoint test "${IMAGE}" -r /opt/chauffeur-kotlin/bin/chauffeur-kotlin -a -x /opt/chauffeur-kotlin/bin/chauffeur-kotlin; then
+  pass "launcher is readable and executable by the runtime user (${launcher_mode})"
+else
+  fail "launcher permissions are wrong (want 755, got ${launcher_mode})" "${modes}"
+fi
+
 leaked="$(docker run --rm --entrypoint sh "${IMAGE}" -c \
   'find / -xdev \( -name ".env" -o -name ".env.*" -o -name "*.env" -o -name "config.toml" -o -name "id_rsa" -o -name "id_ed25519" -o -name "*.key" \) -not -path "/proc/*" -not -path "/etc/ssl/*" -not -path "/usr/lib/jvm/*" 2>/dev/null || true')"
 if [ -z "${leaked}" ]; then pass "no env/config/key files inside the image"; else fail "secret-looking files in image" "${leaked}"; fi
