@@ -14,6 +14,9 @@ RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin chau
 # inherits whatever umask the build machine had, which is not reliable.
 COPY --chmod=u=rwX,go=rX build/install/chauffeur-kotlin/ /opt/chauffeur-kotlin/
 COPY --chmod=u=rwX,go=rX src/main/resources/db/migration /opt/chauffeur-kotlin/migration
+# `X` above keeps an execute bit only if the source had one, which CI artifact transfers can lose.
+# Do not depend on that: make the launcher executable explicitly.
+RUN chmod 0755 /opt/chauffeur-kotlin/bin/chauffeur-kotlin
 
 # Non-secret default. Everything else (DATABASE__*, MIGRATION__*, GOOGLE_CLOUD__*) is supplied at run time
 # with `docker run --env-file`.
