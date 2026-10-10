@@ -35,6 +35,14 @@ kotlin {
 
 application {
     mainClass.set("dev.systrshr.chauffeur_kotlin.ApplicationKt")
+    // Short-lived CLI on a small VPS: favour fast startup and a capped heap.
+    applicationDefaultJvmArgs = listOf(
+        "-Duser.timezone=UTC",
+        "-XX:+UseSerialGC",
+        "-XX:TieredStopAtLevel=1",
+        "-Xshare:auto",
+        "-Xmx192m",
+    )
 }
 
 abstract class MockitoAgentProvider : CommandLineArgumentProvider {
@@ -62,4 +70,38 @@ tasks.withType<Test> {
     testLogging {
         showStandardStreams = true
     }
+}
+
+testing {
+    suites {
+        // `./gradlew integrationTest` runs only these; `./gradlew test` stays Docker-free.
+        register<JvmTestSuite>("integrationTest") {
+            useJUnitJupiter()
+            dependencies {
+                implementation(project())
+                implementation("org.jetbrains.kotlin:kotlin-test:2.4.10")
+                implementation("io.mockk:mockk-jvm:1.14.11")
+                implementation("org.testcontainers:testcontainers-postgresql:2.0.5")
+                implementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
+            }
+            targets.configureEach {
+                testTask.configure {
+                    testLogging { showStandardStreams = true }
+                }
+            }
+        }
+    }
+}
+
+// Integration tests see the same libraries as the application (Exposed, Flyway, protobuf types, ...).
+configurations["integrationTestImplementation"].extendsFrom(configurations.implementation.get())
+
+tasks.register("allTests") {
+    description = "Runs unit and integration tests."
+    group = "verification"
+    dependsOn(tasks.test, tasks.named("integrationTest"))
+}
+
+tasks.check {
+    dependsOn(tasks.named("integrationTest"))
 }
