@@ -1,0 +1,5 @@
+rules:
+  # zizmor prefers a newer `$/...` spelling for same-repo reusable workflows. The documented `./...` form is used
+  # until that syntax is verified with the pinned actionlint; every other rule stays enabled.
+  self-repository:
+    disable: true

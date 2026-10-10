@@ -1,0 +1,99 @@
+name: Deploy
+
+# Used two ways:
+#  * called by ci.yml after a successful publish on main;
+#  * run by hand (Actions -> Deploy -> Run workflow) to redeploy or roll back to any digest already in GHCR.
+on:
+  workflow_call:
+    inputs:
+      digest:
+        description: "sha256:<64 hex> of an image already published to GHCR"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "sha256:<64 hex> of an image already published to GHCR"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The Environment holds the SSH secrets, limits deployment to main, and can require a reviewer.
+    environment: production
+    # One deploy at a time, and never cancel one halfway through a migration.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read # the run's token is handed to the VPS so it can pull the private image
+    env:
+      IMAGE: ghcr.io/vin-rmdn/chauffeur-kotlin
+    steps:
+      - name: Validate digest
+        env:
+          DIGEST: ${{ inputs.digest }}
+        run: |
+          [[ $DIGEST =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "digest must look like sha256:<64 lowercase hex>" >&2; exit 1; }
+
+      - name: Prepare SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set +x
+          echo "::add-mask::${DEPLOY_HOST}"
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "${RUNNER_TEMP}/deploy_key"
+          # Pinned host key from the secret. There is deliberately no ssh-keyscan here: trusting whatever
+          # answers on the first connection would defeat the point of host key checking.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "${RUNNER_TEMP}/known_hosts"
+          cat > "${RUNNER_TEMP}/ssh_config" <<SSHCONF
+          Host vps
+            HostName ${DEPLOY_HOST}
+            User ${DEPLOY_USER}
+            Port ${DEPLOY_PORT:-22}
+            IdentityFile ${RUNNER_TEMP}/deploy_key
+            IdentitiesOnly yes
+            UserKnownHostsFile ${RUNNER_TEMP}/known_hosts
+            GlobalKnownHostsFile /dev/null
+            StrictHostKeyChecking yes
+            BatchMode yes
+            ConnectTimeout 20
+            ServerAliveInterval 15
+            LogLevel ERROR
+          SSHCONF
+
+      - name: Deploy
+        env:
+          DIGEST: ${{ inputs.digest }}
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set +x
+          # The token goes over stdin, never on the command line. The forced command on the VPS accepts only
+          # "deploy <this repository's image>@sha256:<digest>" and "status".
+          printf '%s\n' "$GHCR_TOKEN" | ssh -F "${RUNNER_TEMP}/ssh_config" vps "deploy ${IMAGE}@${DIGEST}"
+
+      - name: Verify what is running
+        env:
+          DIGEST: ${{ inputs.digest }}
+        run: |
+          set +x
+          status="$(ssh -F "${RUNNER_TEMP}/ssh_config" vps status)"
+          echo "$status"
+          grep -qxF "current=${IMAGE}@${DIGEST}" <<<"$status" || { echo "::error::the VPS is not running the digest that was just deployed"; exit 1; }
+          grep -qx "timer=active" <<<"$status" || echo "::warning::the route timer is not active; enable it with 'systemctl enable --now chauffeur-kotlin-route.timer' on the VPS"
+
+      - name: Remove SSH material
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/deploy_key" "${RUNNER_TEMP}/known_hosts" "${RUNNER_TEMP}/ssh_config"

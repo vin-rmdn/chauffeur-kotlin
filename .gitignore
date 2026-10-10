@@ -43,3 +43,11 @@ bin/
 
 config.toml
 .env
+.env.*
+*.env
+!.sample.env
+!deploy/*.env.example
+*.pem
+*.key
+ci_key
+ci_key.pub

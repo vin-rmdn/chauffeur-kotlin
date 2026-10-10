@@ -1,0 +1,227 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege by default; a job that needs more declares it itself.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  JAVA_VERSION: "25"
+
+jobs:
+  lint:
+    name: Lint and secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks scans the full history
+          persist-credentials: false
+
+      # Tools run as digest-pinned container images, so a moved tag cannot change what runs here.
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
+      - name: zizmor (workflow security)
+        run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 --offline .github
+
+      - name: hadolint
+        run: docker run --rm -i hadolint/hadolint@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d < Dockerfile
+
+      - name: shellcheck
+        run: |
+          mapfile -t scripts < <(git ls-files '*.sh' 'deploy/test/fake-bin/*')
+          [ "${#scripts[@]}" -eq 0 ] || docker run --rm -v "$PWD:/repo" -w /repo koalaman/shellcheck@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d "${scripts[@]}"
+
+      - name: gitleaks (full history)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /repo --redact --no-banner --verbose
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - run: ./gradlew test
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest # provides Docker, which Testcontainers uses for Postgres
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - run: ./gradlew integrationTest
+
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - run: ./gradlew installDist
+      # upload-artifact drops file modes, so ship a tar to keep bin/chauffeur-kotlin executable.
+      - run: tar -C build/install -cf install.tar chauffeur-kotlin
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: install
+          path: install.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  deploy-scripts:
+    name: Deploy tooling tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: deploy.sh unit tests (bats, fake docker)
+        run: docker run --rm -v "$PWD:/repo" -w /repo bats/bats@sha256:5322b877351fda0cc435de8c6116de7d0a2ec79d7c680132a0ef329a633bc66f deploy/test
+
+      - name: bootstrap.sh in a clean container
+        run: deploy/test/bootstrap-test.sh
+
+      - name: SSH key restrictions against a real sshd
+        run: deploy/test/ssh-restrictions.sh
+
+      - name: Production compose file and timer schedule are valid
+        run: |
+          secret="$(mktemp)"
+          CHAUFFEUR_DB_PASSWORD_FILE="$secret" docker compose -f deploy/compose.prod.yaml config -q
+          rm -f "$secret"
+          calendar="$(sed -n 's/^OnCalendar=//p' deploy/systemd/chauffeur-kotlin-route.timer)"
+          systemd-analyze calendar "$calendar"
+
+  image:
+    name: Build and test image
+    needs: [lint, unit, integration, build, deploy-scripts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: install
+      - name: Unpack distribution
+        run: |
+          mkdir -p build/install
+          tar -C build/install -xf install.tar
+          rm install.tar
+      - name: Build image
+        env:
+          REVISION: ${{ github.sha }}
+        run: docker build --build-arg "REVISION=${REVISION}" -t chauffeur-kotlin:ci .
+      - name: Image tests
+        run: scripts/test-image.sh chauffeur-kotlin:ci
+      - name: Trivy (vulnerabilities and secrets)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            image --exit-code 1 --severity CRITICAL --ignore-unfixed --scanners vuln,secret chauffeur-kotlin:ci
+      - name: Save tested image for publishing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker save chauffeur-kotlin:ci | gzip -1 > image.tar.gz
+      - name: Upload tested image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image
+          path: image.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  # Only this job can write packages, and it only ever pushes the image that image-job just tested.
+  publish:
+    name: Publish to GHCR
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write # push the image; granted to this job only
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    env:
+      IMAGE: ghcr.io/vin-rmdn/chauffeur-kotlin # keep in sync with IMAGE_REPO in deploy/deploy.sh
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image
+      - name: Load tested image
+        run: gunzip -c image.tar.gz | docker load
+      - name: Log in to GHCR
+        env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - name: Push
+        id: push
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          docker tag chauffeur-kotlin:ci "${IMAGE}:sha-${SHA}"
+          docker tag chauffeur-kotlin:ci "${IMAGE}:latest"
+          docker push "${IMAGE}:sha-${SHA}"
+          docker push "${IMAGE}:latest"
+          ref="$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${IMAGE}:sha-${SHA}" | grep "^${IMAGE}@" | head -1)"
+          digest="${ref#*@}"
+          [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "could not determine pushed digest" >&2; exit 1; }
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "Published ${IMAGE}@${digest}"
+      - name: Verify the published digest pulls and runs
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          docker rmi "${IMAGE}:sha-${GITHUB_SHA}" "${IMAGE}:latest" chauffeur-kotlin:ci >/dev/null
+          docker run --rm --pull=always "${IMAGE}@${DIGEST}" --help >/dev/null
+
+  deploy:
+    name: Deploy to VPS
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: read # the VPS pulls with this run's token
+    uses: ./.github/workflows/deploy.yml
+    with:
+      digest: ${{ needs.publish.outputs.digest }}

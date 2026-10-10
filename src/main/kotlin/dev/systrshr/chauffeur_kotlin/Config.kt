@@ -19,11 +19,19 @@ object ConfigBuilder {
 
     fun build(): Config {
         return instance ?: synchronized(this) {
-            this.instance ?: ConfigLoaderBuilder.default()
-                .addEnvironmentSource()
-                .apply { addFileSource("config.toml", optional = true) }
-                .build()
-                .loadConfigOrThrow<Config>().also { instance = it }
+            this.instance ?: load(defaultLoaderBuilder()).also { instance = it }
         }
+    }
+
+    /** Environment variables (`SECTION__KEY`) take precedence over an optional `config.toml` in the working directory. */
+    fun defaultLoaderBuilder(): ConfigLoaderBuilder {
+        return ConfigLoaderBuilder.default()
+            .addEnvironmentSource()
+            .addFileSource("config.toml", optional = true)
+    }
+
+    /** Seam for tests: loads [Config] from an arbitrary set of sources, bypassing the cached singleton. */
+    fun load(builder: ConfigLoaderBuilder): Config {
+        return builder.build().loadConfigOrThrow<Config>()
     }
 }

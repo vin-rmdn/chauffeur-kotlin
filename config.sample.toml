@@ -7,7 +7,7 @@ password = "dummy"
 name = "chauffeur"
 host = "localhost"
 port = 1201
-directory = "src/main/resources/db/migration"
+directory = "/opt/chauffeur-kotlin/migration"
 
 [database]
 user = "chauffeur"

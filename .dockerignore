@@ -1,0 +1,5 @@
+# Allow-list: nothing is sent to the Docker build unless listed below.
+# This keeps .env, config.toml, .git and any local secrets out of the build context by construction.
+**
+!build/install/chauffeur-kotlin/**
+!src/main/resources/db/migration/*.sql
