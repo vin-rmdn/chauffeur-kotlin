@@ -12,7 +12,7 @@ Nothing else is possible with the CI key. This document is the runbook.
 
 | Where | What | Who can read it |
 |---|---|---|
-| GitHub Environment `production` | `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KNOWN_HOSTS` | the deploy job only |
+| GitHub Environment `production` | `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KNOWN_HOSTS`, optional `DEPLOY_PORT` | the deploy job only |
 | `/etc/chauffeur-kotlin/app.env` | Maps API key, DB credentials (`SECTION__KEY` variables) | root, group `deploy` |
 | `/etc/chauffeur-kotlin/db-password` | generated Postgres password | root, group `deploy` |
 | `/etc/chauffeur-kotlin/route.env` | `ROUTE_ORIGIN`, `ROUTE_DESTINATION` | everyone (not secret) |
@@ -43,7 +43,9 @@ Prerequisites on the VPS: Docker Engine with the Compose plugin, `openssl`, syst
    ```
 5. **Create the GitHub Environment** `production` (Settings → Environments): required reviewer = you, deployment
    branches = `main` only. Add the four secrets: `DEPLOY_SSH_KEY` (contents of `ci_key`), `DEPLOY_HOST`,
-   `DEPLOY_USER` (`deploy`), `DEPLOY_KNOWN_HOSTS` (contents of `known_hosts`).
+   `DEPLOY_USER` (`deploy`), `DEPLOY_KNOWN_HOSTS` (contents of `known_hosts`), and `DEPLOY_PORT` only if sshd
+   is not on 22 (then `known_hosts` must hold the `[host]:port` form that `ssh-keyscan -p <port>` prints).
+   `DEPLOY_HOST` is a secret on purpose, so it is masked in the public Actions logs.
 6. **Delete the local private key**: `shred -u ci_key` (or `rm -P ci_key` on macOS).
 7. Merge to `main`. The first deploy pulls the image, migrates the database and starts the schedule.
 
@@ -60,7 +62,8 @@ Check state any time: `ssh deploy@<vps> status` prints `current=`, `previous=`, 
 
 ## Rollback
 
-Re-run the workflow manually (`Actions → CI → Run workflow`) with the previous digest, or on the VPS:
+Run the **Deploy** workflow manually (`Actions → Deploy → Run workflow`) with the previous digest (`status` shows it as
+`previous=`; the digest is the part after `@`), or on the VPS:
 
 ```bash
 sudo -u deploy chauffeur-kotlin-deploy deploy "$(cat /var/lib/chauffeur-kotlin/previous)"
@@ -110,6 +113,6 @@ Logs for the timer: `journalctl -u chauffeur-kotlin-route`.
 |---|---|
 | `docker run --rm -v "$PWD:/repo" -w /repo bats/bats:1.14.0 deploy/test` | `deploy.sh`: input validation, ordering, secret handling, failure paths |
 | `deploy/test/bootstrap-test.sh` | `bootstrap.sh` in a clean Ubuntu container: users, modes, idempotency |
-| `deploy/test/ssh-restrictions.sh` | what the CI key can and cannot do against a real `sshd` |
+| `deploy/test/ssh-restrictions.sh` | what the CI key can and cannot do against a real `sshd`, plus the real steps of `deploy.yml` (host-key pinning included) |
 
 All three run in CI (`deploy-scripts` job).

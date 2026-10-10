@@ -85,6 +85,58 @@ expect "scp upload is refused" nonzero "-" scp "${SSH_OPTS[@]/#-p/-P}" -i "$WORK
 expect "stdio/port forwarding is refused" nonzero "prohibited|failed|closed" ssh "${SSH_OPTS[@]}" -i "$WORK/ci" -W 127.0.0.1:22 deploy@127.0.0.1
 expect "a different key is refused" nonzero "permission denied" ssh "${SSH_OPTS[@]}" -i "$WORK/stranger" deploy@127.0.0.1 status
 
+# ------------------------------------------------------------------------------------------------
+# The real GitHub workflow steps (extracted from .github/workflows/deploy.yml), run against this sshd.
+step_script() { # step name -> file
+  python3 - "$1" ".github/workflows/deploy.yml" >"$2" <<'PY'
+import sys, yaml
+name, path = sys.argv[1:3]
+steps = yaml.safe_load(open(path))["jobs"]["deploy"]["steps"]
+print(next(s["run"] for s in steps if s["name"] == name))
+PY
+}
+python3 -c 'import yaml' 2>/dev/null || python3 -m pip install --quiet --user pyyaml
+step_script "Validate digest" "$WORK/s-validate.sh"
+step_script "Prepare SSH" "$WORK/s-prepare.sh"
+step_script "Deploy" "$WORK/s-deploy.sh"
+step_script "Verify what is running" "$WORK/s-verify.sh"
+step_script "Remove SSH material" "$WORK/s-cleanup.sh"
+
+DIGEST_OK="sha256:$(printf 'a%.0s' {1..64})"
+DIGEST_OTHER="sha256:$(printf 'b%.0s' {1..64})"
+HOSTKEYS="$(ssh-keyscan -p "$PORT" -t ed25519 127.0.0.1 2>/dev/null)"
+ssh-keygen -q -t ed25519 -N '' -f "$WORK/other-host"
+WRONG_HOSTKEYS="[127.0.0.1]:${PORT} $(cut -d' ' -f1,2 "$WORK/other-host.pub")"
+
+# wf_run <script> [VAR=value ...]: runs a workflow step the way GitHub does (bash -e), with the job env.
+wf_run() {
+  local script="$1"; shift
+  env -i PATH="$PATH" HOME="$HOME" RUNNER_TEMP="$WORK/runner" IMAGE="ghcr.io/vin-rmdn/chauffeur-kotlin" \
+    DEPLOY_SSH_KEY="$(cat "$WORK/ci")" DEPLOY_HOST=127.0.0.1 DEPLOY_USER=deploy DEPLOY_PORT="$PORT" \
+    DEPLOY_KNOWN_HOSTS="$HOSTKEYS" DIGEST="$DIGEST_OK" GHCR_TOKEN=ghs_workflow_token "$@" bash -e "$script"
+}
+
+mkdir -p "$WORK/runner"
+expect "workflow: a malformed digest is refused before anything runs" nonzero "digest must look like" wf_run "$WORK/s-validate.sh" DIGEST=latest
+expect "workflow: a mutable-tag-looking digest is refused" nonzero "digest must look like" wf_run "$WORK/s-validate.sh" "DIGEST=sha256:${DIGEST_OK:7:10}"
+expect "workflow: a valid digest is accepted" zero "-" wf_run "$WORK/s-validate.sh"
+
+expect "workflow: prepare writes key material with restrictive modes" zero "-" bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS='$HOSTKEYS'; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-prepare.sh'"
+if [ "$(stat -c %a "$WORK/runner/deploy_key" 2>/dev/null || stat -f %Lp "$WORK/runner/deploy_key")" = "600" ]; then pass "workflow: private key file is mode 600"; else fail "workflow: private key file is not mode 600"; fi
+
+expect "workflow: deploy step succeeds over the pinned host key" zero "deployed" bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS='$HOSTKEYS'; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-deploy.sh'"
+expect "workflow: verify step passes when the VPS runs the deployed digest" zero "current=" bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS='$HOSTKEYS'; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-verify.sh'"
+expect "workflow: verify step FAILS when the VPS runs a different digest" nonzero "not running the digest" bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS='$HOSTKEYS'; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-verify.sh' DIGEST='$DIGEST_OTHER'"
+
+# Host key pinning: a different host key (man-in-the-middle) or no pinned key must stop the deploy cold.
+bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS='$WRONG_HOSTKEYS'; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-prepare.sh' DEPLOY_KNOWN_HOSTS='$WRONG_HOSTKEYS'" >/dev/null 2>&1
+expect "workflow: a changed host key aborts the deploy" nonzero "host key verification failed|REMOTE HOST IDENTIFICATION" bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS='$WRONG_HOSTKEYS'; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-deploy.sh'"
+bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS=''; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-prepare.sh' DEPLOY_KNOWN_HOSTS=''" >/dev/null 2>&1
+expect "workflow: no pinned host key means no connection (no trust-on-first-use)" nonzero "host key verification failed" bash -c "$(declare -f wf_run); WORK='$WORK'; PORT='$PORT'; HOSTKEYS=''; DIGEST_OK='$DIGEST_OK'; wf_run '$WORK/s-deploy.sh'"
+
+wf_run "$WORK/s-cleanup.sh" >/dev/null 2>&1 || true
+if [ ! -e "$WORK/runner/deploy_key" ] && [ ! -e "$WORK/runner/ssh_config" ] && [ ! -e "$WORK/runner/known_hosts" ]; then pass "workflow: cleanup removes key, config and known_hosts"; else fail "workflow: cleanup left files behind"; fi
+
 # Nothing the rejected attempts asked for may have happened on the server.
 if docker exec "$CONTAINER" test -e /tmp/planted; then fail "scp planted a file on the server"; else pass "no file was planted by scp"; fi
 
