@@ -17,11 +17,9 @@ fun main(args: Array<String>) {
 
     val config = Config.build()
 
-    val flywayMigrator =
-        Flyway.configure().dataSource(config.migration.jdbcUrl(), config.migration.user, config.migration.password)
-            .locations("filesystem:${config.migration.directory}").baselineOnMigrate(true).load()
     val migrationCommand = Migration {
-        return@Migration flywayMigrator
+        return@Migration Flyway.configure().dataSource(config.migration?.jdbcUrl(), config.migration?.user, config.migration?.password)
+            .locations("filesystem:${config.migration?.directory}").baselineOnMigrate(true).load()
     }
 
     Application().subcommands(routeCommand, migrationCommand).main(args)

@@ -76,11 +76,3 @@ graalvmNative {
         }
     }
 }
-
-tasks.jar {
-    manifest {
-        attributes("Main-Class" to "dev.systrshr.chauffeur_kotlin.ApplicationKt")
-    }
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}

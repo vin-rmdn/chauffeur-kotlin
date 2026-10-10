@@ -46,10 +46,10 @@ class Repository(val db: Database = buildDatabase()) {
         private fun buildDatabase(): Database {
             val config = Config.build().database
             val db = Database.connect(
-                config.jdbcUrl(),
+                config?.jdbcUrl() ?: "",
                 driver = "org.postgresql.Driver",
-                user = config.user,
-                password = config.password
+                user = config?.user ?: "",
+                password = config?.password ?: ""
             )
 
             return db
