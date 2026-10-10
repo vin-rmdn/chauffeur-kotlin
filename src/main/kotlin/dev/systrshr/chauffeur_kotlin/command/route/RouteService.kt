@@ -42,7 +42,7 @@ class RouteService(
         private fun buildClient(): RouteClient {
             val config = Config.build()
             val settings = RoutesSettings.newBuilder().setApiKey(config.googleCloud.mapsApiKey).setHeaderProvider {
-                mapOf("X-Goog-FieldMask" to "*")
+                mapOf("X-Goog-FieldMask" to "routes.distanceMeters,routes.legs.startLocation,routes.legs.endLocation,routes.duration,routes.staticDuration")
             }.build()
             return RouteClient(RoutesClient.create(settings))
         }
