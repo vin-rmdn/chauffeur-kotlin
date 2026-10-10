@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS routes (
-    origin_latitude REAL NOT NULL,
-    origin_longitude REAL NOT NULL,
-    destination_latitude REAL NOT NULL,
-    destination_longitude REAL NOT NULL,
+    origin_latitude DOUBLE PRECISION NOT NULL,
+    origin_longitude DOUBLE PRECISION NOT NULL,
+    destination_latitude DOUBLE PRECISION NOT NULL,
+    destination_longitude DOUBLE PRECISION NOT NULL,
     estimate_time TIMESTAMP NOT NULL,
     duration BIGINT NOT NULL,
     static_duration BIGINT NOT NULL,
