@@ -26,7 +26,13 @@ cleanup() {
 trap cleanup EXIT
 
 pass() { echo "PASS  $1"; }
-fail() { echo "FAIL  $1"; [ -n "${2:-}" ] && echo "$2" | sed 's/^/        /'; failures=$((failures + 1)); }
+fail() {
+  echo "FAIL  $1"
+  if [ -n "${2:-}" ]; then
+    while IFS= read -r line; do echo "        ${line}"; done <<<"$2"
+  fi
+  failures=$((failures + 1))
+}
 
 # run_app <docker run args...> -- <app args...>; sets $output and $status
 run_app() {
@@ -50,6 +56,15 @@ expect_failure_matching() { # name pattern
 # ---------------------------------------------------------------- 1. static checks
 uid="$(docker run --rm --entrypoint id "${IMAGE}" -u)"
 if [ "${uid}" != "0" ]; then pass "runs as non-root (uid ${uid})"; else fail "runs as root"; fi
+
+# The runtime user must be able to traverse the directories and read + execute the launcher. Inspect as root so the
+# modes can always be reported; check access as the image's own user (uid 10001).
+modes="$(docker run --rm --user 0 --entrypoint sh "${IMAGE}" -c 'stat -c "%a %U:%G %n" /opt /opt/chauffeur-kotlin /opt/chauffeur-kotlin/bin /opt/chauffeur-kotlin/bin/chauffeur-kotlin /opt/chauffeur-kotlin/lib /opt/chauffeur-kotlin/migration' 2>&1 || true)"
+if docker run --rm --entrypoint sh "${IMAGE}" -c 'test -x /opt/chauffeur-kotlin/bin/chauffeur-kotlin && test -r /opt/chauffeur-kotlin/bin/chauffeur-kotlin && test -r /opt/chauffeur-kotlin/lib && test -r /opt/chauffeur-kotlin/migration' >/dev/null 2>&1; then
+  pass "launcher, lib and migrations are accessible to the runtime user"
+else
+  fail "runtime user cannot access the launcher/lib/migrations" "${modes}"
+fi
 
 leaked="$(docker run --rm --entrypoint sh "${IMAGE}" -c \
   'find / -xdev \( -name ".env" -o -name ".env.*" -o -name "*.env" -o -name "config.toml" -o -name "id_rsa" -o -name "id_ed25519" -o -name "*.key" \) -not -path "/proc/*" -not -path "/etc/ssl/*" -not -path "/usr/lib/jvm/*" 2>/dev/null || true')"
