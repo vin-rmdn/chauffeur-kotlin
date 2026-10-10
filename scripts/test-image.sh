@@ -26,7 +26,13 @@ cleanup() {
 trap cleanup EXIT
 
 pass() { echo "PASS  $1"; }
-fail() { echo "FAIL  $1"; [ -n "${2:-}" ] && echo "$2" | sed 's/^/        /'; failures=$((failures + 1)); }
+fail() {
+  echo "FAIL  $1"
+  if [ -n "${2:-}" ]; then
+    while IFS= read -r line; do echo "        ${line}"; done <<<"$2"
+  fi
+  failures=$((failures + 1))
+}
 
 # run_app <docker run args...> -- <app args...>; sets $output and $status
 run_app() {
