@@ -82,7 +82,7 @@ testing {
             useJUnitJupiter()
             dependencies {
                 implementation(project())
-                implementation("org.jetbrains.kotlin:kotlin-test:2.4.10")
+                implementation("org.jetbrains.kotlin:kotlin-test:2.4.20")
                 implementation("io.mockk:mockk-jvm:1.14.11")
                 implementation("org.testcontainers:testcontainers-postgresql:2.0.5")
                 implementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
