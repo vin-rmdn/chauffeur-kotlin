@@ -1,7 +1,13 @@
 # chauffeur-kotlin
 
-A small Kotlin CLI that asks the [Google Maps Routes API](https://developers.google.com/maps/documentation/routes)
-for a traffic-aware route and stores the result in PostgreSQL, so travel times can be tracked over the day.
+A small Kotlin backend application that hosts vin-rmdn's smaller projects. At present this may only contain Google Maps
+route duration collector, but moving forward this repository will contain projects such as discount tracker for stores,
+job application watcher and notifier. With these projects in mind, democratization of such projects to subscribers are
+also possible, such that others can join and benefit from the miniscule improvements introduced here.
+
+Small project containers aside, this project mainly serves as vin-rmdn's Kotlin journey. As he's mainly using Go and
+Python at work, additional ventures such as Rust and Kotlin can prove to be useful for his future endeavours and 
+skillsets.
 
 ```
 chauffeur-kotlin migration                      # apply database migrations
@@ -44,6 +50,8 @@ scripts/test-image.sh chauffeur-kotlin:local    # black-box tests (SKIP_NETWORK_
 
 The image is a thin JRE layer over `installDist` output plus the SQL migrations. It contains no configuration; pass
 it at run time with `docker run --env-file`.
+
+> To do: future endeavours with GraalVM for native execution is planned.
 
 ## CI
 
