@@ -1,0 +1,45 @@
+# Production database for chauffeur-kotlin. Installed by bootstrap.sh as /etc/chauffeur-kotlin/compose.yaml.
+# No published ports: only containers on the `chauffeur-kotlin` network (the route/migration runs) can reach it.
+name: chauffeur-kotlin
+
+services:
+  database:
+    image: postgres:18-alpine
+    container_name: chauffeur-kotlin-database
+    restart: unless-stopped
+    mem_limit: 768m # sized for a 2 vCPU / 4 GB VPS
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: chauffeur
+      POSTGRES_DB: chauffeur
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+    secrets:
+      - db-password
+    volumes:
+      - database:/var/lib/postgresql # postgres 18+ keeps PGDATA below /var/lib/postgresql/<major>
+    healthcheck:
+      # TCP on purpose: during first-time initialisation postgres only listens on a unix socket, so a
+      # socket-based check would report healthy too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U chauffeur -d chauffeur"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: chauffeur-kotlin
+
+volumes:
+  database:
+    name: chauffeur-kotlin-database
+
+secrets:
+  db-password:
+    # The override exists for tests; production always uses the default.
+    file: ${CHAUFFEUR_DB_PASSWORD_FILE:-/etc/chauffeur-kotlin/db-password}

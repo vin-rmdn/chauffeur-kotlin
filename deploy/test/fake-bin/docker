@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Test double for the docker CLI. Records every call; fails on demand.
+#   FAKE_LOG            file that receives one line per invocation
+#   FAKE_STDIN_LOG      file that receives whatever is piped to `docker login`
+#   FAKE_DOCKER_FAIL    substring; any invocation whose arguments contain it exits 1
+echo "docker $* [DOCKER_CONFIG=${DOCKER_CONFIG:-}]" >>"${FAKE_LOG:-/dev/null}"
+
+if [ -n "${FAKE_DOCKER_FAIL:-}" ] && [[ "docker $*" == *"${FAKE_DOCKER_FAIL}"* ]]; then
+  echo "fake docker: forced failure for '$*'" >&2
+  exit 1
+fi
+
+case "$1" in
+  login) cat >>"${FAKE_STDIN_LOG:-/dev/null}"; [ -n "${DOCKER_CONFIG:-}" ] && echo '{"auths":{}}' >"${DOCKER_CONFIG}/config.json" ;;
+  exec) echo "FAKE-PG-DUMP" ;;
+  inspect) echo healthy ;;
+  image) # `docker image inspect <ref>`: pretend the image is absent unless FAKE_IMAGE_PRESENT=1
+    if [ "${2:-}" = inspect ] && [ "${FAKE_IMAGE_PRESENT:-0}" != 1 ]; then exit 1; fi ;;
+esac
+exit 0
