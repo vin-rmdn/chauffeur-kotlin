@@ -1,5 +1,5 @@
 [Unit]
-Description=chauffeur-kotlin: record the current traffic-aware route estimate
+Description=chauffeur-kotlin-route: record the current traffic-aware route estimate
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
