@@ -26,7 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # The Environment holds the SSH secrets, limits deployment to main, and can require a reviewer.
-    environment: production
+    environment:
+      name: production
     # One deploy at a time, and never cancel one halfway through a migration.
     concurrency:
       group: deploy-production
