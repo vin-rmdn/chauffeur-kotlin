@@ -97,6 +97,7 @@ PY
 }
 python3 -c 'import yaml' 2>/dev/null || python3 -m pip install --quiet --user pyyaml
 step_script "Validate digest" "$WORK/s-validate.sh"
+step_script "Check secrets" "$WORK/s-check.sh"
 step_script "Prepare SSH" "$WORK/s-prepare.sh"
 step_script "Deploy" "$WORK/s-deploy.sh"
 step_script "Verify what is running" "$WORK/s-verify.sh"
@@ -117,6 +118,9 @@ wf_run() {
 }
 
 mkdir -p "$WORK/runner"
+expect "workflow: all secrets present passes the check" zero "-" wf_run "$WORK/s-check.sh"
+expect "workflow: an empty host secret fails early and names it" nonzero "DEPLOY_HOST" wf_run "$WORK/s-check.sh" DEPLOY_HOST=
+expect "workflow: several empty secrets are all named" nonzero "DEPLOY_USER.*|DEPLOY_SSH_KEY" wf_run "$WORK/s-check.sh" DEPLOY_USER= DEPLOY_SSH_KEY=
 expect "workflow: a malformed digest is refused before anything runs" nonzero "digest must look like" wf_run "$WORK/s-validate.sh" DIGEST=latest
 expect "workflow: a mutable-tag-looking digest is refused" nonzero "digest must look like" wf_run "$WORK/s-validate.sh" "DIGEST=sha256:${DIGEST_OK:7:10}"
 expect "workflow: a valid digest is accepted" zero "-" wf_run "$WORK/s-validate.sh"
