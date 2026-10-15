@@ -10,6 +10,15 @@ on:
         description: "sha256:<64 hex> of an image already published to GHCR"
         required: true
         type: string
+      environment:
+        required: true
+        type: string
+    secrets:
+      DEPLOY_SSH_KEY: { required: true }
+      DEPLOY_KNOWN_HOSTS: { required: true }
+      DEPLOY_HOST: { required: true }
+      DEPLOY_USER: { required: true }
+      DEPLOY_PORT: { required: false }
   workflow_dispatch:
     inputs:
       digest:
@@ -26,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # The Environment holds the SSH secrets, limits deployment to main, and can require a reviewer.
-    environment: production
+    environment: ${{ inputs.environment }}
     # One deploy at a time, and never cancel one halfway through a migration.
     concurrency:
       group: deploy-production
